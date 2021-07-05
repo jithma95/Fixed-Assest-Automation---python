@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- DataTale -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Fact Table Data</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataShow" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Acc_Dpn</th>
+                        <th>Additions</th>
+                        <th>Asset_Ctgy</th>
+                        <th>Asset_Desc</th>
+                        <th>Asset_ID</th>
+                        <th>Cap_Date</th>
+                        <th>Closing_Cost</th>
+                        <th>Closing_WDV</th>
+                        <th>Date_Of_Register</th>
+                        <th>Days_held</th>
+                        <th>Days_in_year</th>
+                        <th>Disposal_Date</th>
+                        <th>Disposals</th>
+                        <th>Dpn_Amt</th>
+                        <th>Dpn_Method</th>
+                        <th>Dpn_Rate</th>
+                        <th>Effc_Life</th>
+                        <th>Engagement_Name</th>
+                        <th>Entity</th>
+                        <th>Gain/Loss_on_Disposal</th>
+                        <th>ID</th>
+                        <th>Increase/Decrease_cost_base</th>
+                        <th>Opening_Cost</th>
+                        <th>Opening_WDV</th>
+                        <th>Prior_Year_WDV</th>
+                        <th>Proceeds_on_Disposal</th>
+                        <th>Year_end_date</th>
+                    </tr>
+                </thead>
+
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block javascript %}
+<script>
+    $(document).ready(function () {
+        $('#dataShow').DataTable({
+            serverSide: true,
+            processing: true,
+            searching: true,
+            ajax: function (data, callback, settings) {
+                console.log(data);
+                $.ajax({
+                    url: 'pagination',
+                    type: 'POST',
+                    data: JSON.stringify(data),
+                    dataType: 'json',
+                    contentType: 'application/json;charset=utf-8',
+                    success: function (d) {
+                        data = JSON.parse(d.data);
+                        console.log(data[0]['Gain/Loss_on_Disposal'],data[0]['Increase/Decrease_cost_base']);
+                        var out = [];
+                        for (let i = 0; i < data.length; i++) {
+                            out.push([
+                                data[i].Acc_Dpn,
+                                data[i].Additions,
+                                data[i].Asset_Ctgy,
+                                data[i].Asset_Desc,
+                                data[i].Asset_ID,
+                                data[i].Cap_Date,
+                                data[i].Closing_Cost,
+                                data[i].Closing_WDV,
+                                data[i].Date_Of_Register,
+                                data[i].Days_held,
+                                data[i].Days_in_year,
+                                data[i].Disposal_Date,
+                                data[i].Disposals,
+                                data[i].Dpn_Amt,
+                                data[i].Dpn_Method,
+                                data[i].Dpn_Rate,
+                                data[i].Effc_Life,
+                                data[i].Engagement_Name,
+                                data[i].Entity,
+                                data[i]['Gain/Loss_on_Disposal'],
+                                data[i].ID,
+                                data[i]['Increase/Decrease_cost_base'],
+                                data[i].Opening_Cost,
+                                data[i].Opening_WDV,
+                                data[i].Prior_Year_WDV,
+                                data[i].Proceeds_on_Disposal,
+                                data[i].Year_end_date,
+
+                            ]);
+                            
+                        }
+                        callback({
+                            draw: data.draw,
+                            data: out,
+                            recordsTotal: d.count,
+                            recordsFiltered: d.count
+                        });
+                    },
+                    error: function (err) {
+                        console.log(err);
+                    }
+                });
+
+            },
+            scrollY: 800,
+            scrollX: 800,
+            scroller: {
+                loadingIndicator: true
+            },
+        });
+    });
+</script>
+{% endblock javascript %}

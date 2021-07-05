@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- Begin Page Content -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Uploads</h6>
+                </div>
+                <div class="card-body">
+                    <div class="my-2"></div>
+                    <input type="file" id="id_file" placeholder="Select the file..">
+
+                    <div class="my-2"></div>
+                    <button onclick="upload()" id="upload-btn" class="btn btn-secondary btn-icon-split">
+                        <span class="icon text-white-50">
+                            <i class="fas fa-arrow-right"></i>
+                        </span>
+                        <span class="text">Upload</span>
+                    </button>
+                    <button onclick="refresh()" id="refresh-btn" class="btn btn btn-warning btn-icon-split" hidden>
+                        <span class="text">Refresh</span>
+                    </button>
+                    <div class="my-2"></div>
+                    <div class="spinner-border text-primary" role="status" id="loading" hidden>
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-12" id="progress-panel" hidden>
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Progress</h6>
+                </div>
+                <div class="card-body">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                            id="progress-bar" role="progressbar" aria-valuenow="75" aria-valuemin="0"
+                            aria-valuemax="100" style="width: 0%">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4" id="alert-info" hidden>
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    Processing..
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4" id="alert-success" hidden>
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    Success
+                    <div class="text-white-100 small" id="start-time">Start Time: </div>
+                    <div class="text-white-100 small" id="end-time">End Time: </div>
+                    <div class="text-white-100 small" id="ex-time">Porcess Time: </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4" id="alert-error" hidden>
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    Error. Batch Porcess Failed!
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock content %}
+
+{% block javascript %}
+<script>
+
+    const input = document.getElementById('id_file');
+    const progress = document.getElementById('loading');
+    const progressDisplay = document.getElementById('progress-bar');
+
+    function refresh() {
+        location.reload();
+    }
+
+    // Polling for get progress bar data
+    async function subscribe(code) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Polling started');
+        let response = await fetch(`/uploader/progress/${code}`);
+
+        if (response.status == 200) {
+            let data = await response.text();
+            console.log('2 ', JSON.parse(data));
+            data = JSON.parse(data);
+            if (data.status == 'na') {
+                return;
+            }
+            if (data.status == 'failed' || data.process == 100) {
+                $.ajax({
+                    url: `/uploader/progress/delete/${code}`,
+                    type: 'DELETE',
+                    cache: false,
+                    processData: false,
+                    contentType: false,
+                    success: function (data) {
+                        console.log('deletion done');
+                    },
+                });
+                return;
+            } else {
+                var value = data.process;
+                $('#progress-bar').animate({ width: `${value}%` }, 1);
+                progressDisplay.innerHTML = `${value}%`;
+                await subscribe(code);
+            }
+        } else {
+            return;
+        }
+    }
+
+
+    function upload() {
+        $('#upload-btn').attr("disabled",true);
+        $('#refresh-btn').removeAttr('hidden');
+        // Unique identifier
+        const code = Math.random().toString(36).substr(2, 9);
+        subscribe(code);
+        var isCompleted = false;
+        var t0 = Date.now();
+        var today = new Date();
+        var starttime = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+        var startdateTime = starttime;
+
+        $('#progress-panel').removeAttr('hidden');
+        $('#loading').removeAttr('hidden');
+        $('#alert-info').removeAttr('hidden');
+        $('#alert-success').attr('hidden', true);
+        $('#alert-error').attr('hidden', true);
+        event.preventDefault();
+        progress.classList.remove('not-visible');
+        const file_data = input.files[0];
+        // Create form data 
+        const fd = new FormData();
+        fd.append('file', file_data);
+        fd.append('code', code);
+
+        $.ajax({
+            url: 'uploader/submit/file',
+            type: 'POST',
+            enctype: 'multipart/form-data',
+            data: fd,
+            cache: false,
+            processData: false,
+            contentType: false,
+            success: function (data) {
+                $('#loading').attr('hidden', true);
+                $('#alert-info').attr('hidden', true);
+                $('#alert-success').removeAttr('hidden');
+
+                // Execution time calculation for display
+                var t1 = Date.now();
+                var diff = (t1 - t0) / (1000);
+                var tt = new Date();
+                var endtime = tt.getHours() + ":" + tt.getMinutes() + ":" + tt.getSeconds();
+                var enddateTime = endtime;
+                $('#start-time').text(`Start Time: ${startdateTime}`);
+                $('#end-time').text(`End Time: ${enddateTime}`);
+                $('#ex-time').text(`Porcess Time: ${diff} seconds`);
+                console.log(`Execution time: ${(t1 - t0) / 1000} s`);
+
+                // Animate progress bar to 100%
+                $('#progress-bar').animate({ width: "100%" }, 1);
+                $("#progress-bar").addClass("bg-success");
+                progressDisplay.innerHTML = "100%";
+
+            },
+            error: function (err) {
+                console.log(err);
+                $('#alert-info').attr('hidden', true);
+                $('#loading').attr('hidden', true);
+                $('#alert-error').removeAttr('hidden');
+                $("#progress-bar").addClass("bg-danger");
+            }
+        });
+        return false;
+    }
+
+    // $(function () {
+    //     $('form').submit(upload);
+    // });
+</script>
+{% endblock javascript %}
